@@ -8,7 +8,7 @@ const fetchGitHubGraphQL = new Request('https://api.github.com/graphql', {
   headers: {
     Authorization: `bearer ${
       process.env.REACT_APP_GITHUB_PERSONAL_ACCESS_TOKEN
-    }`
+      }`
   }
 });
 
@@ -150,7 +150,7 @@ const Repository = ({ repository, onFetchMoreIssues, onStarRepository }) => (
 );
 
 const Issues = ({ issues, onFetchMoreIssues }) => (
-  <p>
+  <div>
     <strong>Last 5 Issues: </strong>
     <ul>
       {issues.edges.map(issue => (
@@ -168,7 +168,7 @@ const Issues = ({ issues, onFetchMoreIssues }) => (
     {issues.pageInfo.hasNextPage && (
       <button onClick={onFetchMoreIssues}>More</button>
     )}
-  </p>
+  </div>
 );
 
 const resolveIssuesQuery = (queryResult, cursor) => prevState => {
@@ -310,8 +310,8 @@ class App extends Component {
             errors={errors}
           />
         ) : (
-          <p>No information yet ...</p>
-        )}
+            <p>No information yet ...</p>
+          )}
       </React.Fragment>
     );
   }
