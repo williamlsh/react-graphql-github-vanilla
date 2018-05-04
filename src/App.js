@@ -62,6 +62,16 @@ const ADD_STAR = `
   }
 `;
 
+const REMOVE_STAR = `
+  mutation ($repositoryId: ID!) {
+    removeStar(input: {starrableId: $repositoryId}) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+`;
+
 const getIssuesOfRepository = (path, cursor) => {
   const [organization, repository] = path.split('/');
   return fetch(fetchGitHubGraphQL, {
@@ -76,6 +86,15 @@ const addStarToRepository = repositoryId => {
   return fetch(fetchGitHubGraphQL, {
     body: JSON.stringify({
       query: ADD_STAR,
+      variables: { repositoryId }
+    })
+  }).then(res => res.json());
+};
+
+const removeStarFromRepository = repositoryId => {
+  return fetch(fetchGitHubGraphQL, {
+    body: JSON.stringify({
+      query: REMOVE_STAR,
       variables: { repositoryId }
     })
   }).then(res => res.json());
@@ -199,6 +218,25 @@ const resolveAddStarMutation = mutationResult => prevState => {
   };
 };
 
+const resolveRemoveStarMutation = mutationResult => prevState => {
+  const { viewerHasStarred } = mutationResult.data.removeStar.starrable;
+  const { totalCount } = prevState.organization.repository.stargazers;
+
+  return {
+    ...prevState,
+    organization: {
+      ...prevState.organization,
+      repository: {
+        ...prevState.organization.repository,
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount - 1
+        }
+      }
+    }
+  };
+};
+
 class App extends Component {
   constructor(props) {
     super(props);
@@ -236,9 +274,15 @@ class App extends Component {
   };
 
   onStarRepository = (repositoryId, viewerHasStarred) => {
-    addStarToRepository(repositoryId).then(mutationResult =>
-      this.setState(resolveAddStarMutation(mutationResult))
-    );
+    if (viewerHasStarred) {
+      removeStarFromRepository(repositoryId).then(mutationResult => this.setState(
+        resolveRemoveStarMutation(mutationResult)
+      ));
+    } else {
+      addStarToRepository(repositoryId).then(mutationResult =>
+        this.setState(resolveAddStarMutation(mutationResult))
+      );
+    }
   };
 
   render() {
