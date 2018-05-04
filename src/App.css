@@ -1,0 +1,28 @@
+button {
+  border: none;
+  background-color: #eee;
+  padding: 7px 14px;
+  font-size: 1em;
+  cursor: pointer;
+  display: inline-block;
+  color: red;
+  outline: none;
+  margin-left: 20px;
+  border-radius: 10%;
+}
+
+input {
+  outline: none;
+  padding-bottom: 5px;
+  font-size: 1em;
+  text-align: left;
+  color: goldenrod;
+  border: none;
+  border-bottom: 2px solid black;
+  border-color: black;
+  background-color: transparent;
+}
+
+span {
+  padding-right: 1em;
+}

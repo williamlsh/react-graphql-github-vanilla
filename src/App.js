@@ -18,8 +18,13 @@ const GET_ISSUES_OF_REPOSITORY = `
       name
       url
       repository(name: $repository) {
+        id
         name
         url
+        stargazers {
+          totalCount
+        }
+        viewerHasStarred
         issues(first: 5, after: $cursor, states: [OPEN]) {
           edges {
             node {
@@ -47,6 +52,16 @@ const GET_ISSUES_OF_REPOSITORY = `
   }
 `;
 
+const ADD_STAR = `
+  mutation ($repositoryId: ID!) {
+    addStar(input: {starrableId: $repositoryId}) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+`;
+
 const getIssuesOfRepository = (path, cursor) => {
   const [organization, repository] = path.split('/');
   return fetch(fetchGitHubGraphQL, {
@@ -57,7 +72,21 @@ const getIssuesOfRepository = (path, cursor) => {
   }).then(res => res.json());
 };
 
-const Organization = ({ organization, onFetchMoreIssues, errors }) => {
+const addStarToRepository = repositoryId => {
+  return fetch(fetchGitHubGraphQL, {
+    body: JSON.stringify({
+      query: ADD_STAR,
+      variables: { repositoryId }
+    })
+  }).then(res => res.json());
+};
+
+const Organization = ({
+  organization,
+  onFetchMoreIssues,
+  onStarRepository,
+  errors
+}) => {
   if (errors) {
     return (
       <p>
@@ -75,20 +104,37 @@ const Organization = ({ organization, onFetchMoreIssues, errors }) => {
       <Repository
         repository={organization.repository}
         onFetchMoreIssues={onFetchMoreIssues}
+        onStarRepository={onStarRepository}
       />
     </React.Fragment>
   );
 };
 
-const Repository = ({ repository, onFetchMoreIssues }) => (
+const Repository = ({ repository, onFetchMoreIssues, onStarRepository }) => (
   <React.Fragment>
     <p>
       <strong>In Repository: </strong>
       <a href={repository.url}>{repository.name}</a>
+      <button
+        className="star"
+        type="button"
+        onClick={() =>
+          onStarRepository(repository.id, repository.viewerHasStarred)
+        }
+      >
+        <span>{repository.stargazers.totalCount}</span>
+        {repository.viewerHasStarred ? 'Unstar' : 'Star'}
+      </button>
     </p>
+    <Issues issues={repository.issues} onFetchMoreIssues={onFetchMoreIssues} />
+  </React.Fragment>
+);
+
+const Issues = ({ issues, onFetchMoreIssues }) => (
+  <p>
     <strong>Last 5 Issues: </strong>
     <ul>
-      {repository.issues.edges.map(issue => (
+      {issues.edges.map(issue => (
         <li key={issue.node.id}>
           <a href={issue.node.url}>{issue.node.title}</a>
           <ul>
@@ -100,10 +146,10 @@ const Repository = ({ repository, onFetchMoreIssues }) => (
       ))}
     </ul>
     <br />
-    {repository.issues.pageInfo.hasNextPage && (
+    {issues.pageInfo.hasNextPage && (
       <button onClick={onFetchMoreIssues}>More</button>
     )}
-  </React.Fragment>
+  </p>
 );
 
 const resolveIssuesQuery = (queryResult, cursor) => prevState => {
@@ -131,6 +177,25 @@ const resolveIssuesQuery = (queryResult, cursor) => prevState => {
       }
     },
     errors
+  };
+};
+
+const resolveAddStarMutation = mutationResult => prevState => {
+  const { viewerHasStarred } = mutationResult.data.addStar.starrable;
+  const { totalCount } = prevState.organization.repository.stargazers;
+
+  return {
+    ...prevState,
+    organization: {
+      ...prevState.organization,
+      repository: {
+        ...prevState.organization.repository,
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount + 1
+        }
+      }
+    }
   };
 };
 
@@ -170,6 +235,12 @@ class App extends Component {
     this.onFetchFromGitHub(this.state.path, endCursor);
   };
 
+  onStarRepository = (repositoryId, viewerHasStarred) => {
+    addStarToRepository(repositoryId).then(mutationResult =>
+      this.setState(resolveAddStarMutation(mutationResult))
+    );
+  };
+
   render() {
     const { path, organization, errors } = this.state;
     return (
@@ -182,7 +253,7 @@ class App extends Component {
             type="text"
             value={path}
             onChange={this.onChange}
-            style={{ width: '300px' }}
+            style={{ width: '40vw' }}
           />
           <button type="submit">Search</button>
         </form>
@@ -191,6 +262,7 @@ class App extends Component {
           <Organization
             organization={organization}
             onFetchMoreIssues={this.onFetchMoreIssues}
+            onStarRepository={this.onStarRepository}
             errors={errors}
           />
         ) : (
