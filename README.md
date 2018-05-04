@@ -131,3 +131,5 @@ This project is constructed with the instructions of this article: [A complete R
 - install all the require packages: `npm i`
 - build the project: `npm run build`
 - start the project: `npm start`
+
+You should replace the Github Token with your own by either pasting it to `.env` file or just pasting it to the `Authorization` property in `headers`. The former is recommended for security's account.
